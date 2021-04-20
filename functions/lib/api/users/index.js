@@ -12,16 +12,23 @@ exports.userRouter.put("/:uid", async function updateUserActive(req, res) {
     const uid = req.params.uid;
     admin
         .auth()
-        .updateUser(uid, {
-        disabled: true,
-    })
+        .getUser(uid)
         .then((userRecord) => {
-        console.log("Successfully updated user", userRecord.toJSON());
+        admin
+            .auth()
+            .updateUser(uid, {
+            disabled: !userRecord.disabled,
+        })
+            .then((userRecord) => {
+            res.status(200).send({ error: null, code: 200 });
+        })
+            .catch((error) => {
+            res.status(400).send({ error: `Something went wrong`, code: 400 });
+        });
     })
         .catch((error) => {
-        console.log("Error updating user:", error);
+        res.status(400).send({ error: `No users found!`, code: 400 });
     });
-    res.status(200).send(`You requested user with UID = ${uid}`);
 });
 exports.userRouter.get("*", async (req, res) => {
     res.status(404).send("No found");
