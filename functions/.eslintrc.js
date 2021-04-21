@@ -26,5 +26,6 @@ module.exports = {
     "quotes": ["error", "double"],
     "indent": "off",
     "new-cap": "off",
+    "object-curly-spacing": "off",
   },
 };

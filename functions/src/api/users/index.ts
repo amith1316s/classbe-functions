@@ -11,6 +11,7 @@ userRouter.put(
   "/:uid",
   async function updateUserActive(req: express.Request, res: express.Response) {
     const uid = req.params.uid;
+    console.log(req.body);
 
     try {
       const userRecord = await admin.auth().getUser(uid);
@@ -19,7 +20,7 @@ userRouter.put(
       });
       res.status(200).send({ error: null, code: 200 });
     } catch {
-      res.status(400).send({ error: `No users found!`, code: 400 });
+      res.status(400).send({ error: "No users found!", code: 400 });
     }
   }
 );
