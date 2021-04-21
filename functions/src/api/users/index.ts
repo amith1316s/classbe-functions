@@ -11,18 +11,16 @@ userRouter.put(
   "/:uid",
   async function updateUserActive(req: express.Request, res: express.Response) {
     const uid = req.params.uid;
-    admin
-      .auth()
-      .updateUser(uid, {
-        disabled: true,
-      })
-      .then((userRecord) => {
-        console.log("Successfully updated user", userRecord.toJSON());
-      })
-      .catch((error) => {
-        console.log("Error updating user:", error);
+
+    try {
+      const userRecord = await admin.auth().getUser(uid);
+      await admin.auth().updateUser(uid, {
+        disabled: !userRecord.disabled,
       });
-    res.status(200).send(`You requested user with UID = ${uid}`);
+      res.status(200).send({ error: null, code: 200 });
+    } catch {
+      res.status(400).send({ error: `No users found!`, code: 400 });
+    }
   }
 );
 

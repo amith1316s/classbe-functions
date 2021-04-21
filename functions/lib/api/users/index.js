@@ -10,18 +10,16 @@ exports.userRouter = express.Router();
 // will handle. Please look into the Express documentation for more info.
 exports.userRouter.put("/:uid", async function updateUserActive(req, res) {
     const uid = req.params.uid;
-    admin
-        .auth()
-        .updateUser(uid, {
-        disabled: true,
-    })
-        .then((userRecord) => {
-        console.log("Successfully updated user", userRecord.toJSON());
-    })
-        .catch((error) => {
-        console.log("Error updating user:", error);
-    });
-    res.status(200).send(`You requested user with UID = ${uid}`);
+    try {
+        const userRecord = await admin.auth().getUser(uid);
+        await admin.auth().updateUser(uid, {
+            disabled: !userRecord.disabled,
+        });
+        res.status(200).send({ error: null, code: 200 });
+    }
+    catch (_a) {
+        res.status(400).send({ error: `No users found!`, code: 400 });
+    }
 });
 exports.userRouter.get("*", async (req, res) => {
     res.status(404).send("No found");
