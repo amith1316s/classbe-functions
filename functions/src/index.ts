@@ -5,6 +5,7 @@ import * as cookieParser from "cookie-parser";
 import * as cors from "cors";
 import * as usersApi from "./api/users";
 import { validateFirebaseIdToken } from "./auth/token-validator";
+import { adminRoleValidate } from "./auth/admin-role-validator";
 
 admin.initializeApp(functions.config().firebase);
 
@@ -15,6 +16,7 @@ app.disable("x-powered-by");
 app.use(cors({ origin: true }));
 app.use(cookieParser());
 app.use(validateFirebaseIdToken);
+app.use(adminRoleValidate);
 
 // Any requests to /api/users will be routed to the user router!
 app.use("/users", usersApi.userRouter);
