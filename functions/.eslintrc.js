@@ -22,7 +22,7 @@ module.exports = {
   ],
   plugins: ["@typescript-eslint", "import"],
   rules: {
-    // "linebreak-style": ["error", "windows"],
+    "linebreak-style": "off",
     "quotes": ["error", "double"],
     "indent": "off",
     "new-cap": "off",
