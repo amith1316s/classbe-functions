@@ -18,7 +18,7 @@ exports.userRouter.put("/:uid", async function updateUserActive(req, res) {
         res.status(200).send({ error: null, code: 200 });
     }
     catch (_a) {
-        res.status(400).send({ error: `No users found!`, code: 400 });
+        res.status(400).send({ error: "No users found!", code: 400 });
     }
 });
 exports.userRouter.get("*", async (req, res) => {

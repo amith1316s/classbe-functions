@@ -17,9 +17,9 @@ userRouter.put(
       await admin.auth().updateUser(uid, {
         disabled: !userRecord.disabled,
       });
-      res.status(200).send({ error: null, code: 200 });
+      res.status(200).send({error: null, code: 200});
     } catch {
-      res.status(400).send({ error: `No users found!`, code: 400 });
+      res.status(400).send({error: "No users found!", code: 400});
     }
   }
 );
