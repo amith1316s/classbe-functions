@@ -10,6 +10,7 @@ exports.userRouter = express.Router();
 // will handle. Please look into the Express documentation for more info.
 exports.userRouter.put("/:uid", async function updateUserActive(req, res) {
     const uid = req.params.uid;
+    console.log(req.body);
     try {
         const userRecord = await admin.auth().getUser(uid);
         await admin.auth().updateUser(uid, {
