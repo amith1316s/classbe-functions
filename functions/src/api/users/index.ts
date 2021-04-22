@@ -4,9 +4,9 @@ import { validateFirebaseIdToken } from "../../auth/token-validator";
 import { adminRoleValidate } from "../../auth/admin-role-validator";
 import { env } from "../../env/env";
 
-const app = express();
 
 export const userRouter = express.Router();
+const app = express();
 
 app.use(validateFirebaseIdToken);
 app.use(adminRoleValidate);
