@@ -1,13 +1,16 @@
 import * as express from "express";
 import * as admin from "firebase-admin";
+import { validateFirebaseIdToken } from "../../auth/token-validator";
+import { adminRoleValidate } from "../../auth/admin-role-validator";
 import { env } from "../../env/env";
 
-// This is the router which will be imported in our
-// api hub (the index.ts which will be sent to Firebase Functions).
+const app = express();
+
 export const userRouter = express.Router();
 
-// Now that we have a router, we can define routes which this router
-// will handle. Please look into the Express documentation for more info.
+app.use(validateFirebaseIdToken);
+app.use(adminRoleValidate);
+
 userRouter.put(
   "/:uid",
   async function updateUserActive(req: express.Request, res: express.Response) {
