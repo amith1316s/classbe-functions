@@ -27,5 +27,6 @@ module.exports = {
     "indent": "off",
     "new-cap": "off",
     "object-curly-spacing": "off",
+    "max-len": "off",
   },
 };
