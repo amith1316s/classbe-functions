@@ -5,6 +5,7 @@ export const env = {
     PENDINGPAYMENTS: "PendingPayments",
     COURSES: "Courses",
     CLASSES: "Classes",
+    PROMOCODES: "PromoCodes",
   },
   WEBURL: "https://classbe.com",
 };
