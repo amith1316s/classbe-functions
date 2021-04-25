@@ -9,6 +9,7 @@ import { stripeRouter } from "./api/stripe";
 import { userRouter } from "./api/users";
 import { paymentRouter } from "./api/payments";
 import { validateStripeWebhook } from "./auth/stripe-webhook-validator";
+import { agoraRouter } from "./api/agora";
 
 admin.initializeApp(functions.config().firebase);
 
@@ -22,6 +23,7 @@ app.use(cookieParser());
 app.use("/users", validateFirebaseIdToken, adminRoleValidate, userRouter);
 app.use("/stripe", validateFirebaseIdToken, stripeRouter);
 app.use("/payments", validateStripeWebhook, paymentRouter);
+app.use("/agora", validateFirebaseIdToken, agoraRouter);
 
 app.get("*", async (req: express.Request, res: express.Response) => {
   res.status(404).send("Not found");
