@@ -8,13 +8,10 @@ export const agoraRouter = express.Router();
 // Now that we have a router, we can define routes which this router
 // will handle. Please look into the Express documentation for more info.
 agoraRouter.get(
-  "/getRtcToken",
+  "/getRtcToken/:channelId/:userId",
   async function updateUserActive(req: express.Request, res: express.Response) {
     const appID = "dd512a9f236b47ee839c42e17365630a";
     const appCertificate = "e5e27be9ead54aceaf213e9356364284";
-    // const channelName = '7d72365eb983485397e3e3f9d460bdda';
-    // const uid = 2882341273;
-    // const account = "2882341273";
     const role = RtcRole.PUBLISHER;
 
     const expirationTimeInSeconds = 3600;
@@ -28,14 +25,14 @@ agoraRouter.get(
       console.log("Token With UserAccount: " + tokenB);
 
       res.status(200).send({ error: null, code: 200, token: tokenB });
-    } catch {
+    } catch (e) {
       res.status(400).send({ error: "Something went wrong!", code: 400 });
     }
   }
 );
 
 agoraRouter.get(
-  "/getRtmToken",
+  "/getRtmToken/:userId",
   async function updateUserActive(req: express.Request, res: express.Response) {
     const appID = "dd512a9f236b47ee839c42e17365630a";
     const appCertificate = "e5e27be9ead54aceaf213e9356364284";
