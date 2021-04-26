@@ -1,5 +1,11 @@
 import * as express from "express";
-import {RtcTokenBuilder, RtmTokenBuilder, RtcRole, RtmRole} from "agora-access-token";
+import {
+  RtcTokenBuilder,
+  RtmTokenBuilder,
+  RtcRole,
+  RtmRole,
+} from "agora-access-token";
+import * as functions from "firebase-functions";
 
 // This is the router which will be imported in our
 // api hub (the index.ts which will be sent to Firebase Functions).
@@ -8,48 +14,60 @@ export const agoraRouter = express.Router();
 // Now that we have a router, we can define routes which this router
 // will handle. Please look into the Express documentation for more info.
 agoraRouter.get(
-  "/getRtcToken/:channelId/:userId",
+  "/getRtcToken/:channelId",
   async function updateUserActive(req: express.Request, res: express.Response) {
-    const appID = "dd512a9f236b47ee839c42e17365630a";
-    const appCertificate = "e5e27be9ead54aceaf213e9356364284";
-    const role = RtcRole.PUBLISHER;
+    const appId = functions.config().agora.appid;
+    const appCertificate = functions.config().agora.certificate;
 
-    const expirationTimeInSeconds = 3600;
-      const currentTimestamp = Math.floor(Date.now() / 1000);
-      const privilegeExpiredTs = currentTimestamp + expirationTimeInSeconds;
+    const expirationTimeInSeconds = 3600 * 10;
+    const currentTimestamp = Math.floor(Date.now() / 1000);
+    const privilegeExpiredTs = currentTimestamp + expirationTimeInSeconds;
 
     try {
       // const tokenA = RtcTokenBuilder.buildTokenWithUid(appID, appCertificate, req.params.channelId, req.params.userId, role, privilegeExpiredTs);
       // console.log("Token With Integer Number Uid: " + tokenA);
-      const tokenB = RtcTokenBuilder.buildTokenWithAccount(appID, appCertificate, req.params.channelId, req.params.userId, role, privilegeExpiredTs);
-      console.log("Token With UserAccount: " + tokenB);
+      const token = RtcTokenBuilder.buildTokenWithAccount(
+        appId,
+        appCertificate,
+        req.params.channelId,
+        req.body.user.uid,
+        RtcRole.PUBLISHER,
+        privilegeExpiredTs
+      );
+      functions.logger.debug("Token With UserAccount: " + token);
 
-      res.status(200).send({ error: null, code: 200, token: tokenB });
-    } catch (e) {
-      res.status(400).send({ error: "Something went wrong!", code: 400 });
+      res.status(200).send({ error: null, code: 200, token: token });
+    } catch (error) {
+      functions.logger.debug(error);
+      res.status(400).send({ error: "Token generation failed", code: 400 });
     }
   }
 );
 
 agoraRouter.get(
-  "/getRtmToken/:userId",
+  "/getRtmToken",
   async function updateUserActive(req: express.Request, res: express.Response) {
-    const appID = "dd512a9f236b47ee839c42e17365630a";
-    const appCertificate = "e5e27be9ead54aceaf213e9356364284";
-    // const account = "test_user_id";
+    const appID = functions.config().agora.appid;
+    const appCertificate = functions.config().agora.certificate;
 
-    const expirationTimeInSeconds = 3600;
+    const expirationTimeInSeconds = 3600 * 10;
     const currentTimestamp = Math.floor(Date.now() / 1000);
-
     const privilegeExpiredTs = currentTimestamp + expirationTimeInSeconds;
 
     try {
-      const token = RtmTokenBuilder.buildToken(appID, appCertificate, req.params.userId, RtmRole.Rtm_User, privilegeExpiredTs);
-      console.log("Rtm Token: " + token);
+      const token = RtmTokenBuilder.buildToken(
+        appID,
+        appCertificate,
+        req.body.user.uid,
+        RtmRole.Rtm_User,
+        privilegeExpiredTs
+      );
+      functions.logger.debug("Token With UserAccount: " + token);
 
       res.status(200).send({ error: null, code: 200, token: token });
-    } catch {
-      res.status(400).send({ error: "Something went wrong!", code: 400 });
+    } catch (error) {
+      functions.logger.debug(error);
+      res.status(400).send({ error: "Token generation failed", code: 400 });
     }
   }
 );
