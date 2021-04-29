@@ -10,6 +10,7 @@ import { userRouter } from "./api/users";
 import { paymentRouter } from "./api/payments";
 import { validateStripeWebhook } from "./auth/stripe-webhook-validator";
 import { agoraRouter } from "./api/agora";
+import { addUserToFirestore } from "./triggers/auth";
 
 admin.initializeApp(functions.config().firebase);
 
@@ -30,3 +31,4 @@ app.get("*", async (req: express.Request, res: express.Response) => {
 });
 
 exports.api = functions.https.onRequest(app);
+exports.addUser = functions.auth.user().onCreate(addUserToFirestore);
