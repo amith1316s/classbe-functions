@@ -6,6 +6,8 @@ import {
   RtmRole,
 } from "agora-access-token";
 import * as functions from "firebase-functions";
+import * as admin from "firebase-admin";
+import { env } from "../../env/env";
 
 // This is the router which will be imported in our
 // api hub (the index.ts which will be sent to Firebase Functions).
@@ -23,6 +25,21 @@ agoraRouter.get(
     const currentTimestamp = Math.floor(Date.now() / 1000);
     const privilegeExpiredTs = currentTimestamp + expirationTimeInSeconds;
 
+    const db = admin.firestore();
+    const userRef = db.collection(env.FIRESTORE_COLLECTIONS.USERS).doc(req.body.user.uid);
+    let user = null;
+
+    try {
+      user = (await userRef.get()).data();
+      if (!user || !user.intUID) {
+        res.status(400).send({ error: "Token generation failed due to invalid user", code: 400 });
+        return;
+      }
+    } catch (error) {
+      res.status(400).send({ error: "Token generation failed due to invalid user", code: 400 });
+      return;
+    }
+
     try {
       // const tokenA = RtcTokenBuilder.buildTokenWithUid(appID, appCertificate, req.params.channelId, req.params.userId, role, privilegeExpiredTs);
       // console.log("Token With Integer Number Uid: " + tokenA);
@@ -30,7 +47,7 @@ agoraRouter.get(
         appId,
         appCertificate,
         req.params.channelId,
-        req.body.user.uid,
+        user.intUID,
         RtcRole.PUBLISHER,
         privilegeExpiredTs
       );
