@@ -12,6 +12,7 @@ const users_1 = require("./api/users");
 const payments_1 = require("./api/payments");
 const stripe_webhook_validator_1 = require("./auth/stripe-webhook-validator");
 const agora_1 = require("./api/agora");
+const auth_1 = require("./triggers/auth");
 admin.initializeApp(functions.config().firebase);
 const app = express();
 app.disable("x-powered-by");
@@ -25,4 +26,5 @@ app.get("*", async (req, res) => {
     res.status(404).send("Not found");
 });
 exports.api = functions.https.onRequest(app);
+exports.addUser = functions.auth.user().onCreate(auth_1.addUserToFirestore);
 //# sourceMappingURL=index.js.map
