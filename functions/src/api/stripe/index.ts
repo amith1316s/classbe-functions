@@ -155,8 +155,8 @@ stripeRouter.post(
         metadata: {
           pendingPaymentId: pendingPayment.id,
         },
-        success_url: `${env.WEBURL}/course/${course.id}`,
-        cancel_url: `${env.WEBURL}/course/${course.id}`,
+        success_url: `${env.WEBURL}/course/payment-success`,
+        cancel_url: `${env.WEBURL}/course/payment-error`,
       });
 
       res.status(200).send({ id: session.id });

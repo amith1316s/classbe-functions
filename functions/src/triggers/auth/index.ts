@@ -6,7 +6,7 @@ export const addUserToFirestore = async (user: any) => {
   const db = admin.firestore();
   const userRef = db.collection(env.FIRESTORE_COLLECTIONS.USERS).doc(user.uid);
   await userRef.set({
-    intUID: (Date.now() / 1000),
+    intUID: Math.round((Date.now() / 1000)),
     disabled: user.disabled,
     uid: user.uid,
     email: user.email,
