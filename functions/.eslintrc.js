@@ -28,5 +28,6 @@ module.exports = {
     "new-cap": "off",
     "object-curly-spacing": "off",
     "max-len": "off",
+    "require-jsdoc": "off",
   },
 };
