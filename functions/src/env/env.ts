@@ -7,6 +7,7 @@ export const env = {
     CLASSES: "Classes",
     PROMOCODES: "PromoCodes",
     CONFIGS: "SiteConfigs",
+    CHATS: "Chats",
   },
   WEBURL: "https://classbe.com",
 };

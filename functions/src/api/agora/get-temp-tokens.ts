@@ -20,6 +20,9 @@ export async function getTempRtcToken(
   const userRef = db
     .collection(env.FIRESTORE_COLLECTIONS.USERS)
     .doc(req.body.user.uid);
+  const chatRef = db
+    .collection(env.FIRESTORE_COLLECTIONS.CHATS)
+    .doc(req.params.channelId);
 
   const siteConfigs = await getSiteConfigs();
   let user = null;
@@ -49,6 +52,31 @@ export async function getTempRtcToken(
     return;
   }
 
+  try {
+    const chatData = (await chatRef.get()).data();
+    if (!chatData) {
+      res.status(400).send({
+        error: "No channel found",
+        code: 400,
+      });
+      return;
+    }
+
+    if (chatData.demoTokenGeneratedBy.indexOf(req.body.user.uid) >= 0) {
+      res.status(400).send({
+        error: "You have already generated a token",
+        code: 400,
+      });
+      return;
+    }
+  } catch (error) {
+    res.status(400).send({
+      error: "You have already generated a token",
+      code: 400,
+    });
+    return;
+  }
+
   const expirationTimeInSeconds = +siteConfigs?.demoTime * 60;
   const currentTimestamp = Math.floor(Date.now() / 1000);
   const privilegeExpiredTs = currentTimestamp + expirationTimeInSeconds;
@@ -63,6 +91,14 @@ export async function getTempRtcToken(
       privilegeExpiredTs
     );
     functions.logger.debug("Token With UserAccount: " + token);
+
+    await chatRef.update({
+      demoTokenGenerated: true,
+      demoTokenExpiresAt: new Date().toISOString(),
+      demoTokenGeneratedBy: admin.firestore.FieldValue.arrayUnion(
+        req.body.user.uid
+      ),
+    });
 
     res.status(200).send({ error: null, code: 200, token: token });
   } catch (error) {
