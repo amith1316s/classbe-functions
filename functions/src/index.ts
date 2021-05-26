@@ -11,6 +11,7 @@ import { paymentRouter } from "./api/payments";
 import { validateStripeWebhook } from "./auth/stripe-webhook-validator";
 import { agoraRouter } from "./api/agora";
 import { addUserToFirestore } from "./triggers/auth";
+import { paypalRouter } from "./api/paypal";
 
 admin.initializeApp(functions.config().firebase);
 
@@ -23,6 +24,7 @@ app.use(cookieParser());
 
 app.use("/users", validateFirebaseIdToken, adminRoleValidate, userRouter);
 app.use("/stripe", validateFirebaseIdToken, stripeRouter);
+app.use("/paypal", validateFirebaseIdToken, paypalRouter);
 app.use("/payments", validateStripeWebhook, paymentRouter);
 app.use("/agora", validateFirebaseIdToken, agoraRouter);
 

@@ -13,6 +13,7 @@ const payments_1 = require("./api/payments");
 const stripe_webhook_validator_1 = require("./auth/stripe-webhook-validator");
 const agora_1 = require("./api/agora");
 const auth_1 = require("./triggers/auth");
+const paypal_1 = require("./api/paypal");
 admin.initializeApp(functions.config().firebase);
 const app = express();
 app.disable("x-powered-by");
@@ -20,6 +21,7 @@ app.use(cors({ origin: true }));
 app.use(cookieParser());
 app.use("/users", token_validator_1.validateFirebaseIdToken, admin_role_validator_1.adminRoleValidate, users_1.userRouter);
 app.use("/stripe", token_validator_1.validateFirebaseIdToken, stripe_1.stripeRouter);
+app.use("/paypal", token_validator_1.validateFirebaseIdToken, paypal_1.paypalRouter);
 app.use("/payments", stripe_webhook_validator_1.validateStripeWebhook, payments_1.paymentRouter);
 app.use("/agora", token_validator_1.validateFirebaseIdToken, agora_1.agoraRouter);
 app.get("*", async (req, res) => {
