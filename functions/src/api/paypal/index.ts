@@ -106,53 +106,56 @@ paypalRouter.post(
       return;
     }
 
-    costValue -= costValue * discountPercent / 100;
+    const netCostValue = costValue - (costValue * discountPercent) / 100;
 
     try {
       const pendingPayment = await db
         .collection(env.FIRESTORE_COLLECTIONS.PENDINGPAYMENTS)
         .add({
           uid: body.user.uid,
+          teacherId: course.teacherId,
           email: body.user.email,
           classes: body.classIds,
           course: body.courseId,
           promoCode: body.promoCode,
+          cost: costValue,
         });
 
       functions.logger.debug(pendingPayment);
 
-      const PAYPAL_CLIENT = "AdmQ62w8ZwWGkqSp49Jzb5zTH-M7a5XDWm3-oAbaMag4snizNWfvsaTk21EZ3VYY9grlvtn5xZEv8oPz";
-      const PAYPAL_SECRET = "EIVt4OQ7_DbI4Ua9G-sS0C2neGYtgevTO0tPxlM-b9PCoCc1Yjq5IyT19B9wsIi0oiqCm1NSuYKuyW8N";
+      const PAYPAL_CLIENT =
+        "AdmQ62w8ZwWGkqSp49Jzb5zTH-M7a5XDWm3-oAbaMag4snizNWfvsaTk21EZ3VYY9grlvtn5xZEv8oPz";
+      const PAYPAL_SECRET =
+        "EIVt4OQ7_DbI4Ua9G-sS0C2neGYtgevTO0tPxlM-b9PCoCc1Yjq5IyT19B9wsIi0oiqCm1NSuYKuyW8N";
 
       const request = new paypal.orders.OrdersCreateRequest();
       request.prefer("return=representation");
       request.requestBody({
         intent: "AUTHORIZE",
         application_context: {
-          "return_url": `${env.WEBURL}/course/payment-success`,
-          "cancel_url": `${env.WEBURL}/course/payment-error`,
-          "brand_name": "Classbe",
-          "locale": "en-US",
-          "landing_page": "BILLING",
-          "user_action": "PAY_NOW",
-          "shipping_preference": "NO_SHIPPING",
+          return_url: `${env.WEBURL}/course/payment-success`,
+          cancel_url: `${env.WEBURL}/course/payment-error`,
+          brand_name: "Classbe",
+          locale: "en-US",
+          landing_page: "BILLING",
+          user_action: "PAY_NOW",
+          shipping_preference: "NO_SHIPPING",
         },
-        purchase_units: [{
-          reference_id: pendingPayment.id,
-          amount: {
-            currency_code: "USD",
-            value: costValue.toString(),
+        purchase_units: [
+          {
+            reference_id: pendingPayment.id,
+            amount: {
+              currency_code: "USD",
+              value: netCostValue.toString(),
+            },
           },
-        },
         ],
       });
 
       let order;
       try {
         order = await new paypal.core.PayPalHttpClient(
-          new paypal.core.SandboxEnvironment(
-            PAYPAL_CLIENT, PAYPAL_SECRET
-          )
+          new paypal.core.SandboxEnvironment(PAYPAL_CLIENT, PAYPAL_SECRET)
         ).execute(request);
       } catch (err) {
         console.error(err);
@@ -195,6 +198,14 @@ paypalRouter.post(
 
       if (paymentData) {
         const batch = db.batch();
+
+        // Update wallet in user collection
+        batch.update(
+          db.collection(env.FIRESTORE_COLLECTIONS.USERS).doc(paymentData.teacherId),
+          {
+            wallet: admin.firestore.FieldValue.increment(paymentData.cost),
+          }
+        );
 
         // Update course with student id
         batch.update(
@@ -242,23 +253,27 @@ paypalRouter.post(
 
 paypalRouter.post(
   "/authorize-paypal-transaction",
-  async function AuthorizePaypalTransaction(req: express.Request, res: express.Response) {
+  async function AuthorizePaypalTransaction(
+    req: express.Request,
+    res: express.Response
+  ) {
     const orderID = req.body.orderID;
 
-    const PAYPAL_CLIENT = "AdmQ62w8ZwWGkqSp49Jzb5zTH-M7a5XDWm3-oAbaMag4snizNWfvsaTk21EZ3VYY9grlvtn5xZEv8oPz";
-    const PAYPAL_SECRET = "EIVt4OQ7_DbI4Ua9G-sS0C2neGYtgevTO0tPxlM-b9PCoCc1Yjq5IyT19B9wsIi0oiqCm1NSuYKuyW8N";
+    const PAYPAL_CLIENT =
+      "AdmQ62w8ZwWGkqSp49Jzb5zTH-M7a5XDWm3-oAbaMag4snizNWfvsaTk21EZ3VYY9grlvtn5xZEv8oPz";
+    const PAYPAL_SECRET =
+      "EIVt4OQ7_DbI4Ua9G-sS0C2neGYtgevTO0tPxlM-b9PCoCc1Yjq5IyT19B9wsIi0oiqCm1NSuYKuyW8N";
 
     const request = new paypal.orders.OrdersAuthorizeRequest(orderID);
     request.requestBody({});
 
     try {
       const authorization = await new paypal.core.PayPalHttpClient(
-        new paypal.core.SandboxEnvironment(
-          PAYPAL_CLIENT, PAYPAL_SECRET
-        )
+        new paypal.core.SandboxEnvironment(PAYPAL_CLIENT, PAYPAL_SECRET)
       ).execute(request);
 
-      const authorizationID = authorization.result.purchase_units[0].payments.authorizations[0].id;
+      const authorizationID =
+        authorization.result.purchase_units[0].payments.authorizations[0].id;
       console.log(authorizationID);
     } catch (err) {
       console.error(err);

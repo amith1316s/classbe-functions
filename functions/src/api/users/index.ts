@@ -21,6 +21,7 @@ userRouter.put(
       });
       await db.collection(env.FIRESTORE_COLLECTIONS.USERS).doc(uid).update({
         disabled: !userRecord.disabled,
+        wallet: 0,
       });
       res.status(200).send({ error: null, code: 200 });
     } catch {

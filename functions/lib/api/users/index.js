@@ -19,6 +19,7 @@ exports.userRouter.put("/:uid", async function updateUserActive(req, res) {
         });
         await db.collection(env_1.env.FIRESTORE_COLLECTIONS.USERS).doc(uid).update({
             disabled: !userRecord.disabled,
+            wallet: 0,
         });
         res.status(200).send({ error: null, code: 200 });
     }
