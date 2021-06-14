@@ -1,14 +1,8 @@
 import * as express from "express";
 import * as functions from "firebase-functions";
 import * as admin from "firebase-admin";
-import { Stripe } from "stripe";
 import { env } from "../../env/env";
-import * as http from "http";
-import { Base64 } from "js-base64";
-
-const stripe = new Stripe(functions.config().stripe.secret, {
-  apiVersion: "2020-08-27",
-});
+const paypal = require("@paypal/checkout-server-sdk");
 
 export const paypalRouter = express.Router();
 
@@ -28,7 +22,7 @@ paypalRouter.post(
     let classes: FirebaseFirestore.DocumentData[] = [];
     let enorlledClasses: FirebaseFirestore.DocumentData[] = [];
     let discountPercent = 0;
-    const discounts: Stripe.Checkout.SessionCreateParams.Discount[] = [];
+
     try {
       course = (
         await db
@@ -97,38 +91,13 @@ paypalRouter.post(
       discountPercent += 5;
     }
 
-    // Creating onetime checkout coupon
-    if (discountPercent > 0) {
-      try {
-        const coupon = await stripe.coupons.create({
-          percent_off: discountPercent,
-          duration: "once",
-        });
-        discounts.push({ coupon: coupon.id });
-      } catch (error) {
-        functions.logger.error("Coupon generation faild");
-        res.status(400).send({ code: 400, message: "Something went wrong" });
-        return;
-      }
-    }
-
     // Products adding
-    const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = [];
+    let costValue = 0;
+    let unitValue = 0;
     if (course && classes.length > 0) {
       enorlledClasses.forEach((c) => {
-        lineItems.push({
-          price_data: {
-            currency: "usd",
-            product_data: {
-              name: c.title,
-              metadata: {
-                id: c.id,
-              },
-            },
-            unit_amount: course ? course.ratePerHour * 100 : 0,
-          },
-          quantity: c.hours,
-        });
+        unitValue = course ? course.ratePerHour : 0;
+        costValue += unitValue * c.hours;
       });
     } else {
       res
@@ -136,6 +105,8 @@ paypalRouter.post(
         .send({ code: 400, message: "Course or classes not found" });
       return;
     }
+
+    costValue -= costValue * discountPercent / 100;
 
     try {
       const pendingPayment = await db
@@ -148,114 +119,152 @@ paypalRouter.post(
           promoCode: body.promoCode,
         });
 
-      // const session = await stripe.checkout.sessions.create({
-      //   payment_method_types: ["card"],
-      //   customer_email: body.user.email,
-      //   line_items: lineItems,
-      //   mode: "payment",
-      //   discounts: discounts,
-      //   metadata: {
-      //     pendingPaymentId: pendingPayment.id,
-      //   },
-      //   success_url: `${env.WEBURL}/course/payment-success`,
-      //   cancel_url: `${env.WEBURL}/course/payment-error`,
-      // });
-
-      console.log(pendingPayment);
-
-      // const request = new paypal.orders.OrdersCreateRequest();
-      // request.prefer("return=representation");
-      // request.requestBody({
-      //   intent: 'CAPTURE',
-      //   application_context: {
-      //     "return_url": `${env.WEBURL}/course/payment-success`,
-      //     "cancel_url": `${env.WEBURL}/course/payment-error`,
-      //     "brand_name": "Classbe",
-      //     "locale": "en-US",
-      //     "landing_page": "BILLING",
-      //     "user_action": "CONTINUE"
-      //   },
-      //   purchase_units: [{
-      //     amount: {
-      //       currency_code: 'USD',
-      //       value: '220.00'
-      //     }
-      //   }]
-      // });
-
-      // let order;
-      // try {
-      //   order = await payPalClient.client().execute(request);
-      // } catch (err) {
-
-      //   console.error(err);
-      //   return res.send(500);
-      // }
+      functions.logger.debug(pendingPayment);
 
       const PAYPAL_CLIENT = "AdmQ62w8ZwWGkqSp49Jzb5zTH-M7a5XDWm3-oAbaMag4snizNWfvsaTk21EZ3VYY9grlvtn5xZEv8oPz";
       const PAYPAL_SECRET = "EIVt4OQ7_DbI4Ua9G-sS0C2neGYtgevTO0tPxlM-b9PCoCc1Yjq5IyT19B9wsIi0oiqCm1NSuYKuyW8N";
 
-      const PAYPAL_OAUTH_API = "https://api-m.sandbox.paypal.com/v1/oauth2/token/";
-      const PAYPAL_ORDER_API = "https://api-m.sandbox.paypal.com/v2/checkout/orders/";
-
-      const basicAuth = Base64.encode(`${PAYPAL_CLIENT}:${PAYPAL_SECRET}`);
-
-      const options = {
-        host: PAYPAL_OAUTH_API,
-        method: "POST",
-        headers: {
-          Accept: "application/json",
-          Authorization: `Basic ${basicAuth}`,
+      const request = new paypal.orders.OrdersCreateRequest();
+      request.prefer("return=representation");
+      request.requestBody({
+        intent: "AUTHORIZE",
+        application_context: {
+          "return_url": `${env.WEBURL}/course/payment-success`,
+          "cancel_url": `${env.WEBURL}/course/payment-error`,
+          "brand_name": "Classbe",
+          "locale": "en-US",
+          "landing_page": "BILLING",
+          "user_action": "PAY_NOW",
+          "shipping_preference": "NO_SHIPPING",
         },
-        data: "grant_type=client_credentials",
-      };
-
-      const req = http.request(options, (res1) => {
-        res.on("data", (d) => {
-          const options1 = {
-            host: PAYPAL_ORDER_API,
-            method: "POST",
-            headers: {
-              Accept: "application/json",
-              Authorization: `Bearer ${d.access_token}`,
-            },
-            data: {
-              intent: "CAPTURE",
-              purchase_units: [{
-                amount: {
-                  currency_code: "USD",
-                  value: "220.00",
-                },
-              },
-            ],
-            },
-          };
-
-          const order = http.request(options1, (res2) => {
-            res.on("data", (o) => {
-              res.status(200).json({
-                orderID: o.id,
-              });
-            });
-          });
-
-          order.on("error", (error) => {
-            res.status(400).send({ code: 400, message: error });
-          });
-        });
+        purchase_units: [{
+          reference_id: pendingPayment.id,
+          amount: {
+            currency_code: "USD",
+            value: costValue.toString(),
+          },
+        },
+        ],
       });
 
-      req.on("error", (error) => {
-        res.status(400).send({ code: 400, message: error });
-      });
+      let order;
+      try {
+        order = await new paypal.core.PayPalHttpClient(
+          new paypal.core.SandboxEnvironment(
+            PAYPAL_CLIENT, PAYPAL_SECRET
+          )
+        ).execute(request);
+      } catch (err) {
+        console.error(err);
+        return res.send(500);
+      }
 
+      res.status(200).json({
+        orderID: order.result.id,
+      });
 
       return;
     } catch (error) {
       functions.logger.debug(error);
-      res.status(400).send({ code: 400, message: error });
+      res.status(400).send({ code: 400, message: error, from: "3rd" });
       return;
     }
+  }
+);
+
+// https://us-central1-classbe-1deb7.cloudfunctions.net/api/paypal/complete-checkout
+paypalRouter.post(
+  "/complete-checkout",
+  async function createPayment(req: express.Request, res: express.Response) {
+    const body = req.body.object;
+    const paymentPendingId = body.purchase_units[0].reference_id;
+    const db = admin.firestore();
+
+    try {
+      // Add payment details for future reference
+      await db.collection(env.FIRESTORE_COLLECTIONS.PAYMENTS).add({
+        ...body,
+        created: body.id,
+        eventId: body.id,
+      });
+
+      const paymentDataRef = db
+        .collection(env.FIRESTORE_COLLECTIONS.PENDINGPAYMENTS)
+        .doc(paymentPendingId);
+      const paymentData = (await paymentDataRef.get()).data();
+
+      if (paymentData) {
+        const batch = db.batch();
+
+        // Update course with student id
+        batch.update(
+          db
+            .collection(env.FIRESTORE_COLLECTIONS.COURSES)
+            .doc(paymentData.course),
+          {
+            studentIds: admin.firestore.FieldValue.arrayUnion(paymentData.uid),
+          }
+        );
+
+        // Update classes with student id
+        paymentData.classes.forEach((c: string) => {
+          batch.update(
+            db.collection(env.FIRESTORE_COLLECTIONS.CLASSES).doc(c),
+            {
+              studentIds: admin.firestore.FieldValue.arrayUnion(
+                paymentData.uid
+              ),
+            }
+          );
+        });
+
+        await batch.commit();
+      } else {
+        functions.logger.error("No payment data found in pending");
+        res
+          .status(400)
+          .send({ error: "No payment data found in pending", code: 400 });
+        return;
+      }
+
+      // Delete pending payment data since payment is a success
+      await paymentDataRef.delete();
+
+      res.status(200).send({ error: null, code: 200 });
+      return;
+    } catch (error) {
+      functions.logger.error(error);
+      res.status(400).send({ error: error, code: 400 });
+      return;
+    }
+  }
+);
+
+paypalRouter.post(
+  "/authorize-paypal-transaction",
+  async function AuthorizePaypalTransaction(req: express.Request, res: express.Response) {
+    const orderID = req.body.orderID;
+
+    const PAYPAL_CLIENT = "AdmQ62w8ZwWGkqSp49Jzb5zTH-M7a5XDWm3-oAbaMag4snizNWfvsaTk21EZ3VYY9grlvtn5xZEv8oPz";
+    const PAYPAL_SECRET = "EIVt4OQ7_DbI4Ua9G-sS0C2neGYtgevTO0tPxlM-b9PCoCc1Yjq5IyT19B9wsIi0oiqCm1NSuYKuyW8N";
+
+    const request = new paypal.orders.OrdersAuthorizeRequest(orderID);
+    request.requestBody({});
+
+    try {
+      const authorization = await new paypal.core.PayPalHttpClient(
+        new paypal.core.SandboxEnvironment(
+          PAYPAL_CLIENT, PAYPAL_SECRET
+        )
+      ).execute(request);
+
+      const authorizationID = authorization.result.purchase_units[0].payments.authorizations[0].id;
+      console.log(authorizationID);
+    } catch (err) {
+      console.error(err);
+      return res.status(500).send({ code: 400, message: err });
+    }
+    return res.send(200);
   }
 );
 
